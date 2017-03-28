@@ -1,0 +1,89 @@
+#! /bin/bash
+### BEGIN INIT INFO
+# Provides:          terrarium
+# Required-Start:    networking
+# Required-Stop:     networking
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Starts and stops terrarium
+# Description:       Creates a UUID on system start if one does
+#                    not exist yet. Regularily polls _iot servers'
+#                    webservice method fetchBundle(uuid)
+### END INIT INFO
+
+API="Pushbullet secret"
+
+start() {
+  echo -n "Starting Terrarium process(es)..."
+  /Terrarium/light.sh &
+    sleep 1
+  /Terrarium/temp.sh &
+    sleep 1
+  /Terrarium/humidity.sh &
+    sleep 1
+  
+  statgrep=$(ps ax | grep [h]umidity.sh && ps ax | grep [h]umidity.sh && ps ax | grep [l]ight.sh)
+  if [[ $statgrep > 0 ]]
+  then
+    echo "OK"
+    MSG=$(echo "Terrarium erfolgreich gestartet")
+    $(curl -silent -o error.txt -u $API: https://api.pushbullet.com/v2/pushes -d type=note -d title="Terrarium Alarm" -d body="$MSG")
+  else
+    echo "something went wrong"
+    MSG=$(echo "Terrarium konnte nicht gestartet werden")
+    $(curl -silent -o error.txt -u $API: https://api.pushbullet.com/v2/pushes -d type=note -d title="Terrarium Alarm" -d body="$MSG")
+  fi
+}
+
+stop() {
+  echo -n "Stopping Terrarium process(es)..."
+  killall temp.sh
+  killall humidity.sh
+  killall light.sh
+  
+  sleep 1
+  statgrep=$(ps ax | grep [h]umidity.sh && ps ax | grep [h]umidity.sh && ps ax | grep [l]ight.sh)
+  if [[ $statgrep < 0 ]]
+  then
+    echo "OK"
+    MSG=$(echo "Terrarium erfolgreich gestoppt")
+    $(curl -silent -o error.txt -u $API: https://api.pushbullet.com/v2/pushes -d type=note -d title="Terrarium Alarm" -d body="$MSG")
+  else
+    echo "something went wrong"
+    MSG=$(echo "Terrarium konnte nicht gestoppt werden")
+    $(curl -silent -o error.txt -u $API: https://api.pushbullet.com/v2/pushes -d type=note -d title="Terrarium Alarm" -d body="$MSG")
+  fi
+  }
+
+status2() {
+  echo -n "Status: "
+  statgrep=$(ps ax | grep [h]umidity.sh && ps ax | grep [h]umidity.sh && ps ax | grep [l]ight.sh)
+  if [[ $statgrep > 0 ]]
+  then
+    echo $statgrep
+  else
+    echo "Currently no terrarium processes are running."
+  fi
+#  exit 1
+}
+
+case "$1" in
+  start)
+    start
+    ;;
+  stop)
+    stop
+    ;;
+  restart)
+    stop
+    start
+    ;;
+  status2)
+    status2
+    ;;
+  *)
+    echo $"Usage: $0 {start|stop|restart|status2}"
+    exit 0
+esac
+
+exit 0
