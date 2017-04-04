@@ -21,6 +21,8 @@ start() {
     sleep 1
   /Terrarium/humidity.sh &
     sleep 1
+  /Terrarium/deactive.sh &
+    sleep 1
   
   statgrep=$(ps ax | grep [h]umidity.sh && ps ax | grep [h]umidity.sh && ps ax | grep [l]ight.sh)
   if [[ $statgrep > 0 ]]
