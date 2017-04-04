@@ -6,6 +6,7 @@ humidity=5
 pin=0xEF
 API="Pushbullet secret"
 firstrun=25032017
+mysql_counter=10
 
 
 finish() {
@@ -19,7 +20,8 @@ while true
 do
 
     date=$(date +%k%M)
-
+    date_mysql=$(date +%F" "%R)
+    
 #    echo -n ${date:0:2}:${date:2:2}" -> "
 
     
@@ -40,13 +42,24 @@ do
     
 
 #        humidity=$(python2.7 /root/Adafruit_Python_DHT/examples/AdafruitDHT.py 22 4 | grep -oP "(?<=Humidity=)[0-9.]+")
-        humidity=$(/Terrarium/loldht 7 | grep -oP "(?<=Humidity = )[0-9.]+")
-#echo -n $humidity
-    if (( $(bc <<< "$humidity > 100") ))
+        humidity=$(/Terrarium/loldht 15 | grep -oP "(?<=Humidity = )[0-9.]+")
+        humidity2=$(/Terrarium/loldht 7 | grep -oP "(?<=Humidity = )[0-9.]+")
+
+    if (( $(bc <<< "$humidity > 100") )) || [ ! $humidity ]
     #if [[ $humidity > 100 ]]
     then
         echo -n "Bad Data"
     else
+#    echo -n $humidity
+#    echo -n $humidity2
+    #       mysql 
+        (( mysql_counter++ ))
+        if [ $mysql_counter -gt 10 ]
+        then
+            echo "INSERT INTO humidity_log (client_id, value_1, value_2, timestamp) VALUES ('1', '$humidity', '$humidity2', '$date_mysql');" | mysql -uroot -praspberry Terrarium
+            mysql_counter=0
+        fi
+        
 #        echo -n $firstrun "-> "
         if (( $(bc <<< "$humidity > $(( $humidityziel + $schwellwert ))") ))
         #if [[ $humidity > $(( $humidityziel + $schwellwert )) ]]
@@ -72,7 +85,7 @@ do
                 #i2cset -y 1 "$address" $(($i2c | $pin))
                 if (( $firstrun != $(date +%d%m%Y) && "$date" > 1200 ))
                 then
-                    MSG=$(echo "Feuchtigkeit ist zu niedrig $humidity statt" $(( $humidityziel + $schwellwert )))
+                    MSG=$(echo "Feuchtigkeit ist zu niedrig $humidity statt $(( $humidityziel + $schwellwert ))")
                     $(curl -silent -o error.txt -u $API: https://api.pushbullet.com/v2/pushes -d type=note -d title="Terrarium Alarm" -d body="$MSG")
                     echo -n " (Message sent)"
                     firstrun=$(date +%d%m%Y)
@@ -85,4 +98,5 @@ do
     fi
 
     sleep 30
+    #echo ""
 done
